@@ -1,5 +1,5 @@
-from docx_extractor import extract_docx_to_text
-from sections_extractor import extract_sections
+from original_resume_extraction.docx_extractor import extract_docx_to_text
+from original_resume_extraction.sections_extractor import extract_sections
 import json
 
 PDF_PATH = "KevinHuang_Resume2026.pdf"

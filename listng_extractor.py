@@ -115,5 +115,5 @@ def extract_job(url: str):
 
 
 if __name__ == "__main__":
-    url = "PUT URL HERE"
+    url = "https://www.shopify.com/careers/applied-machine-learning-engineering-managers_54914cfb-394f-486f-bd27-69627f8505d0?"
     print(extract_job(url))
