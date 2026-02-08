@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv('OPEN_ROUTER_KEY')
+API_KEY = os.getenv('API_KEY')
 
-GENAI_PRO = 'openai/gpt-oss-120b:free'
+GENAI_LITE = 'gemini-2.5-flash'
+GENAI_PRO = 'gemini-2.5-pro'

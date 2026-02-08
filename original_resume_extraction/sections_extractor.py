@@ -1,23 +1,10 @@
-from openai import OpenAI
-from models import API_KEY, GENAI_PRO
+from google import genai
+from models import API_KEY, GENAI_PRO, GENAI_LITE
+from google.genai import types 
 import json
 
 def extract_sections(text):
-    client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=API_KEY,
-    )
-
-    SECTION_SCHEMA = """
-            {
-            "type": "object",
-            "properties": {
-                "summary": {"type": "string"},
-                "key_points": {"type": "array", "items": {"type": "string"}},
-                "sentiment": {"type": "string", "enum": ["positive", "neutral", "negative"]}
-            }
-            }
-        """
+    client = genai.Client(api_key=API_KEY)
 
     system_instruction = """
             You are an expert Resume Parsing AI. Your task is to extract structured data from the provided resume text (which has been extracted from a DOCX file) and output strictly valid JSON.
@@ -30,7 +17,7 @@ def extract_sections(text):
                 "name": "Full Name", 
                 "email": "extracted email", 
                 "phone": "extracted phone", 
-                "links": ["url1", "url2"], 
+                "links": [], 
                 "location": "City, State/Country" 
             },
             "summary": "Professional summary text",
@@ -42,7 +29,7 @@ def extract_sections(text):
                 "start_date": "YYYY-MM or Present", 
                 "end_date": "YYYY-MM or Present", 
                 "location": "City, State", 
-                "details": ["Honors", "GPA", "Relevant Coursework"] 
+                "details": [] 
                 } 
             ],
             "experience": [ 
@@ -52,7 +39,7 @@ def extract_sections(text):
                 "location": "City, State", 
                 "start_date": "YYYY-MM", 
                 "end_date": "YYYY-MM or Present", 
-                "bullets": ["Responsibility 1", "Achievement 2"] 
+                "bullets": [] 
                 } 
             ],
             "projects": [ 
@@ -61,15 +48,15 @@ def extract_sections(text):
                 "role": "Your Role", 
                 "start_date": "YYYY-MM", 
                 "end_date": "YYYY-MM", 
-                "tech": ["Python", "React", "AWS"], 
-                "bullets": ["Description of project"], 
+                "tech": [], 
+                "bullets": [], 
                 "link": "Project URL" 
                 } 
             ],
             "skills": { 
-                "languages": ["Python", "JavaScript"], 
-                "frameworks": ["Django", "React"], 
-                "tools": ["Git", "Docker"], 
+                "languages": [], 
+                "frameworks": [], 
+                "tools": [], 
                 "other": [] 
             },
             "certifications": [
@@ -91,29 +78,104 @@ def extract_sections(text):
             ### MASTER RULES
             1. Return ONLY the JSON object. 
             2. Do not add conversational text like "Here is the JSON".
-            3. If a field is missing, use empty strings "" or lists [].
+            3. If a field is missing, use None, do not enter empty variables such as '', [], or {}.
         """
 
     prompt = text
 
-    # First API call with reasoning
-    response = client.chat.completions.create(
-        model=GENAI_PRO,
-        messages=[
-                {
-                    "role" : "system",
-                    "content" : system_instruction
+    # Define the schema to match your resume structure
+    resume_schema = {
+            "type": "OBJECT",
+            "properties": {
+                "contact": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "name": {"type": "STRING"},
+                        "email": {"type": "STRING"},
+                        "phone": {"type": "STRING"},
+                        "links": {"type": "ARRAY", "items": {"type": "STRING"}},
+                        "location": {"type": "STRING"}
+                    }
                 },
-                {
-                    "role": "user",
-                    "content": prompt
+                "summary": {"type": "STRING"},
+                "education": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "school": {"type": "STRING"},
+                            "degree": {"type": "STRING"},
+                            "field": {"type": "STRING"},
+                            "start_date": {"type": "STRING"},
+                            "end_date": {"type": "STRING"},
+                            "location": {"type": "STRING"},
+                            "details": {"type": "ARRAY", "items": {"type": "STRING"}}
+                        }
+                    }
+                },
+                "experience": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "company": {"type": "STRING"},
+                            "title": {"type": "STRING"},
+                            "location": {"type": "STRING"},
+                            "start_date": {"type": "STRING"},
+                            "end_date": {"type": "STRING"},
+                            "bullets": {"type": "ARRAY", "items": {"type": "STRING"}}
+                        }
+                    }
+                },
+                "projects": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "name": {"type": "STRING"},
+                            "role": {"type": "STRING"},
+                            "tech": {"type": "ARRAY", "items": {"type": "STRING"}},
+                            "bullets": {"type": "ARRAY", "items": {"type": "STRING"}},
+                            "link": {"type": "STRING"}
+                        }
+                    }
+                },
+                "skills": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "languages": {"type": "ARRAY", "items": {"type": "STRING"}},
+                        "frameworks": {"type": "ARRAY", "items": {"type": "STRING"}},
+                        "tools": {"type": "ARRAY", "items": {"type": "STRING"}},
+                        "other": {"type": "ARRAY", "items": {"type": "STRING"}}
+                    }
+                },
+                "certifications": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "name": {"type": "STRING"},
+                            "issuer": {"type": "STRING"},
+                            "date": {"type": "STRING"}
+                        }
+                    }
                 }
-        ],
-        response_format = {"type": "json_object"} 
-    )
+            }
+        }
 
-    # Extract the assistant message with reasoning_details
-    response = response.choices[0].message.content
-    response = json.loads(response)
+    # First API call with reasoning
+    response = client.models.generate_content(
+        model=GENAI_PRO,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.1,
+            max_output_tokens=65000,
+            system_instruction = system_instruction,
+            response_mime_type = 'application/json',
+            response_schema = resume_schema
+        )
+    ) 
 
-    return response
+    print(response.text)
+
+    return json.loads(response.text)
